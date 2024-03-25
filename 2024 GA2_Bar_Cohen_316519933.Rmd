@@ -1,0 +1,608 @@
+---
+title: "General Assignment 2"
+subtitle: ""
+author: "Rcourse2023 Team"
+date: "February 9th, 2023"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_depth: 2
+    df_print: default
+    code_folding: show
+    toc_float: TRUE
+    self_contained: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<style type="text/css">
+  h1{ font-size: 16pt; }
+  h2{ font-size: 16pt; }
+  h3{ font-size: 15pt; }
+  h4{ font-size: 15pt; }
+  h5{ font-size: 12pt; }
+  h6{ font-size: 12pt; }
+  body{ font-size: 14pt; }
+  .credits{ 
+    color: blue;
+    font-size: 18pt; 
+    font-weight: bold;
+  }
+  .tasks{
+    color: blue;
+    font-size: 14pt; 
+    font-weight: bold;
+  } 
+  .emphasized{ 
+    color: red;
+    font-size:1em;
+    font-weight: bold;
+  }
+</style>
+  
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, 
+                      collapse = F, 
+                      tidy=TRUE, 
+                      warning = F,
+                      message=F,
+                      fig.align = 'center', 
+                      fig.height=7, 
+                      fig.width=7)
+```
+***
+
+# Initial Notes {-}
+
+This is the second General Assignment of the Rcouse 2023. 
+
+You are required to submit this assignment to get a final grade. Remember
+The final grade is calculated numerically: 20% weekly assignments (top 10 grades), 40% General assignment 1 and 40 General assignment 2.
+
+**Common instructions:**
+
+* Add your name (Latin characters only) at the beginning of this document
+for **author**, but don't modify the rest of the upper part of the document 
+so that the html document renders appropriately.
+* Use the given spaces to write your code, don't change the order of chunks of
+code, and avoid editing the instructions.
+* Answer the questions given throughout the assignment at the **very bottom** 
+section of the document.
+* When you are finished and ready to submit, use the **knitr** button
+above the Rstudio IDE to render (create) the html document to check that it is
+done correctly.
+* IMPORTANT: Omit or comment lines that INSTALL packages and that PRINT 
+unnecessary information like entire tables of data. Do not include local
+file PATHS.
+* **Save** your results in a specific named variable when instructed. Failing to do so will result in penalties.
+* You have until midnight of the deadline day to submit your answers.
+
+Good luck!
+
+---
+
+# Setup {-}
+
+## Install and load the following required packages {-}
+
+* From CRAN:
+  + pheatmap
+  + ggplot
+  + magrittr
+  + dplyr
+ 
+* From Bioconductor:
+  - tximport
+  - DESeq2
+  - LSD
+  - SummarizedExperiment
+
+
+> You may have to install some of these packages first. <br />
+Do not include installation commands in your submitted answer (at the very
+least comment them using '#' at the start of line) <br/>
+A penalty will be applied if you ignore this. <br />
+
+***Please, report any problems with package installation ASAP!***
+
+```{r message=FALSE, include=FALSE}
+#---Install packages from CRAN---
+library(ggplot2)
+library(magrittr)
+library(pheatmap)
+library(dplyr)
+
+#---Install packages from Bioconductor---
+library(SummarizedExperiment)
+library(LSD)
+library(DESeq2)
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("tximport")
+library(tximport)
+
+#--done--
+```
+
+# TASK1: DESeq analysis of APEX-tagged genes
+
+In this assignment, you will analyze RNA-seq data from a recent 
+[paper](https://elifesciences.org/articles/29224). In this work, the authors 
+developed a method termed APEX-RIP, which maps transcriptomes to sub cellular 
+compartments based on proximity to a specific protein. 
+
+The four proteins used in this study are markers from different cellular locations:
+
+  1) A mitochondrial protein (Mito), 
+  2) An ER membrane protein (KDEL-HRP),
+  3) A nuclear localization sequence (NLS),
+  4) A nuclear export sequence (NES).
+
+For each of these fusions, RNAs labelled with biotin ("RIP") were compared 
+to a non-labelled background ("Input"), each with 2-3 replicates. The RNA-seq 
+data were quantified using RSEM and gene annotations taken from RefSeq.
+The file "rsem_files_ex.txt" consists in a table, *a.k.a* Design Matrix, assigning
+each file within the zipped archive has a specific condition and replicate number.
+
+***Notes:***
+
+* RSEM is an accurate and user-friendly software tool for quantifying transcript
+abundances from RNA-Seq data. RSEM implements an algorithm to assign reads to 
+the isoforms from which they are more likely to be originated.
+* Therefore the transcript level is not to be mistaken for read counts. 
+It is a quantitative estimation of transcript abundance given RNA-seq data.
+
+## Load RSEM data
+
+### Read the table "rsem_files_ex.txt" into an object called `ftab`. 
+
+This file catalogues RNA-seq experiments in the form of a table with 3 columns: <br />
+ (i) The RSEM output file <br />
+ (ii) Condition tested for each experiment <br />
+ (iii) The number of the replicate <br />
+
+### Load RSEM files
+
+Load all the RSEM files into a variable called `rse` using tximport() and the `ftab`object.
+
+***Note:***
+
+> To prevent reloading data if you made a mistake, we suggest creating a backup
+copy of the `rse` to an object called `rse.bak`. If somehow you altered the data, 
+you can restore the original data from the backup running the following command:
+`rse <- rse.bak` <br />
+> Alternatively, you could `save()` the object `rse` to an RData file. Then read
+the file with the function `load()` whenever you need to restore data. <br />
+
+### Filter out transcripts that their **minimum** length is **shorter** than 300 bases
+
+You can make a logical vector to indicate which rows correspond to transcripts with a minimum
+'length' value **greater or equal** to 300 in the corresponding matrix. Then
+subset the ***counts***, ***abundance*** and ***length*** data in `rse` (`rse` is a list that includes 3 data sets) with this logical vector.
+
+
+```{r echo=TRUE, warning=FALSE, 1a-load-data, message=F}
+#--------------------------Starting with reading the tbl--------------------------------
+ftab <- read.table("rsem_files_ex.txt", header = TRUE, stringsAsFactors = FALSE)
+#--------------------------adding the headers to the table--------------------------------
+colnames(ftab) <- c("files", "condition", "replicate")
+#--------------------------load the RSEM files------------------------------------------
+rse <- tximport(files = ftab$files, type = "rsem", tx2gene = NULL)
+#--------------------------Backup the original data--------------------------------------
+rse.bak <- rse
+#--------------------------save the original data----------------------------------------
+save(rse, file = "rse.bak.RData")
+#---Done with the first part---
+
+#--------------------------Filter out transcripts that their minimum length is shorter than 300 bases--------------------------------
+#----creating a logical vector to indicate which rows in the 
+# rse$length is true for length >= 300
+valLength <- apply(rse$length, 1, min) >= 300
+
+#----subset the counts, abundance and length data in rse
+rse$counts <- rse$counts[valLength, ]
+rse$abundance <- rse$abundance[valLength, ]
+rse$length <- rse$length[valLength, ]
+#---Done with the second part---
+# 😊
+```
+
+## Compare biotin-labeled *vs.* all RNAs across four experiments using DESEQ2
+
+### Make a data frame with information about the design of all experiments
+
+Using `ftab`, create a data frame `cdat` with 2 columns of factors:
+ 1) condition
+ 2) replicate (with their respective number)
+
+### Make a DESeqDataSet using the design data frame
+
+*Hint: use the object constructor `DESeqDataSetFromTximport()` with the design*
+*formula `~condition+replicate` based on `cdat` and `rse`*  
+
+**Save** the DESeqDataSet object inside `ds.txi`
+
+*Q1- How many genes do you have in the dataset?*  
+**Save** your answer in a variable `ANSWER1`
+
+### Run the DESeq analysis (*i.e.* differential expression analysis)
+
+*Hint: use `DESeq()` function on the DEseqDataSet object.*
+***Important! make sure to set the parameter `betaPrior=TRUE`.***
+
+### **Save** the DESeqDataSet object inside `ds`
+
+### Filter results for low counts genes.
+
+Make sure to only keep rows for which the sum of counts per row is **greater than 10**.
+Use the function `counts()` to access count values from a DESeq results object.
+**Save** the filtered results in an object called `dds`.
+
+*Q2- What fraction (in %) of genes were removed?* <br/>
+
+**Save** your answer in a variable `ANSWER2`
+
+*Q3- What fraction (in %) of genes were retained?* 
+
+**Save** your answer in a variable `ANSWER3`
+```{r echo=TRUE, 1b-DESEQ2, include=FALSE}
+#----- starting with the first part of the task-----
+cdat <- data.frame(condition = ftab$condition, replicate = ftab$replicate)
+#### Make a DESeqDataSet using the design data frame
+ds.txi <- DESeqDataSetFromTximport(rse, cdat, ~condition+replicate)
+
+ANSWER1 = nrow(ds.txi)
+
+# ----- starting with the second part of the task-----
+# Run the DESeq analysis (i.e. differential expression analysis)
+ds <- DESeq(ds.txi, betaPrior=TRUE)
+
+# Filter results for low counts genes
+dds <- ds[ rowSums(counts(ds)) > 10, ]
+
+# Calculate the fraction of genes removed
+ANSWER2 = round((1 - nrow(dds)/nrow(ds.txi)) * 100, 2)
+
+ANSWER3 = round((nrow(dds)/nrow(ds.txi)) * 100, 2)
+
+# 😊
+#-----Done with the second part of the task-----
+# ---Done-----
+```
+
+## Enrichment of differentially expressed genes per compartment
+
+### Find the number of significantly enriched genes in each compartment
+
+***Significantly enriched genes*** should have passed the statistical test on their
+fold-change expression between conditions (*based on averaged across replicates*)
+and yielded an *adjusted p-value* below the arbitrary threshold of 0.05.
+
+*The null hypothesis of the test is that the effect of the condition does not 
+affect expression. Hence the fold-change of expression remains at 1 
+(or 0 on a log scale)*
+
+To access results from a DESeq analysis, use the `results()` function.
+Make sure to set the threshold for `alpha` to 0.05, specify in the contrast
+argument what should be compared (conditions or replicates) followed by the names
+of the conditions/replicates as specified in `cdat`. 
+*Hint: check the help of results for examples*
+
+Extract the results of differential RNA expression for each compartment 
+(Mito, ER, NLS, NES) between biotin-labelled (referred as 'RIP') *vs.* their 
+respective background (referred to as 'Input').<br>
+
+**Print the summary of each result objects to the console.**
+
+```{r 1c-enrichment, echo=TRUE}
+# set the threshold for alpha to 0.05
+alpha = 0.05
+
+# Extract condition lavels
+condition_lavels <- dds$condition %>% levels()
+
+#create a empty list to store the results
+results_list <- list()
+
+#function to extract the results
+extract_results <- function(condition, dds, alpha){
+  #extract the results
+  res <- results(dds, contrast = c(condition, "RIP", "Input"),alpha = alpha)
+  #print the summary of the results
+  print(summary(results_list[[condition]]))
+  print("it works thanks god")
+  return(res)
+}
+# apply the function to each condition
+res_KDEL-HRP <-  extract_results("KDEL-HRP", dds, alpha)
+results(dds, contrast = c("condition", "KDEL-HRP", "RIP", "Input"), alpha = alpha)
+
+```
+
+### Barplot: Strong DE genes
+
+Make a barplot with the number of strong differentially expressed genes for each condition.
+
+For each condition, make a logical vector to identify significantly regulated genes 
+within the result object with an adjusted p-value below 0.05 AND **absolute** 
+log2fold-change greater than 1. 
+*You can use the `$` operator to extract data from the result object from the previous step.*
+
+1) Calculate the total number of significantly regulated genes in each compartment.
+2) Store those numbers in a vector and use the vector for generating the barplot.
+3) Each bar should correspond to one condition; its height would represent the
+number of genes significantly regulated.
+4) Indicate in the title the value for each bar: Mito:__ ER:__ NLS:__ NES:__
+
+**You are asked to extract the number of genes with R commands so do not just write the number**
+
+
+```{r echo=TRUE}
+
+```
+
+\newpage
+
+## log2fold-change NLS *vs.* NES heat-scatterplot
+
+Next, we want to evaluate the correlation for expression between different conditions.
+(*e.g.* NLS *vs.* NES).
+
+Scatterplots are often misinterpreted whenever the density is not taken into account.
+The `heatscatter()` function from the `LSD` package solves this issue by
+estimating the points' density and showing it as a color gradient. 
+
+### HeatScatter plot
+
+Use the log2FoldChange from the result object of both compartments (NLS *vs* NES)
+within the heatscatter() function. **Make sure to display** the correlation 
+coefficient as the title using the correct parameter of the `heatscatter()` 
+function, ***cor = TRUE***.
+
+*Q4- What are the Pearson and Spearman correlation coefficients between the log2-fold*
+*changes in NLS and NES experiments?* <br />
+> Hint: You can use the `cor()` function to calculate the r coefficient using both the "Spearman" and "Pearson" method  
+**Save** your answer in a variable `ANSWER4` 
+
+```{r heatscatter, echo=TRUE}
+ANSWER4 = ""
+```
+
+\newpage
+
+## Similarity and hierarchical clustering on log-transformed data
+
+### log-space counts
+
+Use `rlog()` to transform the DESEQdataset counts into log space and **save** it in a new
+object called `rld`. 
+*Hint: use `rlog()` function without prior information on samples.*
+*Check the function's help for more info.*
+
+### Summarized Experiment
+
+Convert the log-transformed data `rld` to an object called `SE` of class 
+'summarizedExperiment' *Hint: use the function `assay()`*
+
+### Euclidean distance between genes
+
+Compute the euclidean distance between differentially expressed genes. 
+
+*Hint: use `dist()` to calculate the euclidean distance between samples in the *
+*summarized experiment results in `SE`.* *You may need to transpose the data, **
+**as dist() calculates the distance between rows of the input data* <br>
+
+**Save** inside `dsample`, the variable `SE` as a dist object  
+**Save** inside `m.dsample` the variable `dsample` as a matrix object
+
+### Heatmap: Sample similarity
+
+Create a heatmap of distances between samples: **Distance values should be**
+**represented with a color gradient.** *For example, darker shades can reflect 
+larger distances between observations, and lighter shades for observations with 
+short distances.* 
+
+Set the arguments, cellwidth = 10 and display_numbers = T
+
+*Hint: use `pheatmap()` function with the calculated euclidean distance for 
+both rows and columns clustering calculation*
+
+***Notes:***
+
+> You must convert the distance object to a matrix for `pheatmap()`. <br />
+Set: <br>
+
+* rownames to reflect the various conditions and replicates.  
+* clustering_distance_rows = dsample,  
+* clustering_distance_cols = dsample,
+* cellwidth = 10,
+* show_colnames = F,
+* show_rownames = F,
+* fontsize = 5,
+* main = "Sample similarity as Euclidean distance", 
+* display_numbers = T
+
+
+This information is accessible in the`rld` object or from the initial `cdat` 
+design data frame from the previous step. 
+
+*Q5- Based on the heatmap, which sample group is the most distanced from the rest of the treatments?*  
+**Save** your answer in a variable `ANSWER5` (10 words maximum)
+
+```{r 1d-sim.mat-hclust, echo=TRUE, cache=FALSE}
+ANSWER5 = ""
+len.ANSWER5 = print(length(unlist(strsplit(ANSWER5,split = " ")))) # DON'T delete!
+```
+
+---
+
+
+
+# Task3: Data quailty and multiple testing  
+
+## Load the data
+
+* Load single cell data "caron_mat.RDS" and save it inside a variable `data_sc`.   
+* Load the meta data "caron_metadata.RDS" and save it inside a variable `metadata_sc`
+ 
+
+> Important: Single cell data include information about the expression of genes within multiple cells. **Take** a moment and understand what the rows and columns of `data_sc` represent  
+
+```{r read_data, echo=TRUE}
+
+```
+
+***Q6***: The values in `data_sc` are TPM (transcripts per million)/scaled (Centred Values are: Xi-mean(x))/centered (z-score values i.e. (Xi-mean(x))/sd(x) just like we have learned in the lesson about PCA)?<br> 
+Explore the data in the following chunk:</br> 
+
+1)  Print/Plot maximum 3 plots  
+2)  **Don't** print text/number/vector/data set information.</br>
+
+***Explain*** you answer (30 words **maximum**) and **save**  it in a variable `ANSWER6`. 
+
+```{r q1, echo=TRUE}
+ANSWER6 = ""
+len.ANSWER6 = print(length(unlist(strsplit(ANSWER6,split = " ")))) # DON'T delete!
+```
+
+## Log transform the data<br>
+
+1) Log transform the data. First, divide by 10 each value in the data, add 1 to handle zero values and finally, log2 transform.   
+2) If the data is not centered, center it by deducting the mean of each row from each value in that row.  
+3) **Save** the log transform data and centered data in a variable `cent_mat`
+
+```{r log_center, echo=TRUE}
+
+```
+
+## QC The data<br>
+
+Calculate the complexity of each cell in the `log_data` (Apply the same calculation from weekly Ex.9).<br>
+
+1) Keep cells with complexity larger than 500 and store the results in a variable `comp_up`
+
+```{r comp, echo=TRUE}
+
+```
+
+2) Filter `cent_mat` according to `comp_up`, keep cells with high complexity and **save** the filtered data set in `cent_filt`
+
+3) Filter `metadata_sc` according to `comp_up`, keep cells with high complexity and **save** the filtered data set in `metadata_sc_filt`
+
+3) Filter `log_data` according to `comp_up`, keep cells with high complexity and **save** the filtered data set in `log_data_filt`
+
+```{r filter_cells, echo=TRUE}
+
+```
+## Finding the highly expressed genes
+Using `log_data` (unfiltered by complexity) find the top 7000 genes with the highest **mean** expression.  
+
+**Save** in a variable `cent_final` a subset of `cent_filt` with only the top 7000 most expressed genes.
+
+```{r filter_genes, echo=TRUE}
+
+```
+
+## Comparing gene expression between Malignant cell to non-Malignant cells<br>
+
+### Cell classification  
+Classified cells as Malignant cells or non-Malignant cells<br>
+
+Add a column to `metadata_sc_filt` that is called *Malignant*.    
+If the cell type indicates it's malignant, put "Malignant" in the new column and "non-Malignant" otherwise. 
+
+```{r Malig, echo=TRUE}
+
+```
+
+### Visualisation of cell classification  
+Draw a bar plot of the number of malignant cells against non malignant
+
+```{r bar_plot, echo=TRUE}
+
+
+```
+
+## Multiple comparisons of gene expression
+
+### Create a sample data<br>
+
+ 1) Sample out randomly (using sample()) of the malignant cells, 536 cells. 
+ 2) Store their names in variable `sampled_malig`
+ 3) Set *replace = FALSE*
+ 4) Store all non-Malignant cells into a variable called `non_malignant`. 
+ 5) Remove all NA's values from that variable. 
+
+```{r Sample, echo=TRUE}
+set.seed(2020) # Don't change!
+
+
+```
+
+### Multiple t.test<br>
+
+For each gene, perform a t.test between the sampled malignant cells to the non_malignant cells using the `cent_final` matrix.  
+
+> NOTICE! you will perform multiple test, you will need to use the HB FDR correction. <br>
+
+1) Use the padjust function  to apply  FDR correction to the p-values from the multiple testing before.   
+2) **Save** the p-values in a variable `p_values` and the adjusted p-values store in a vector named `p_adjusted` 
+
+```{r t_test, echo=TRUE}
+
+```
+
+
+### Q7. Understanding the results<br>
+
+1) load the file "pvalue_hist.rds"
+2) Look at the plot in the following chunk. 
+3) How would you know which histogram represents the adjusted p-values?<br>
+
+**Save** your explaination in `ANSWER7` (maxium 30 words)
+```{r echo=TRUE}
+readRDS("pvalue_hist.rds")
+pvalue.hist(a = p_values,b = p_adjusted)
+
+ANSWER7 = ""
+len.ANSWER7 = print(length(unlist(strsplit(ANSWER7,split = " ")))) # DON'T delete!
+```
+
+---
+\newpage
+
+***
+
+# Answer to the questions found throughout the assignment
+
+> **Your answers should be stored in the objects `ANSWER1`, `ANSWER2`, etc. to
+be printed out in the report.**
+
+<span class='tasks'> Answers for General assignment 2 </span>
+
+(@) **Q1** How many genes are present in the dataset? </br>
+**A1** `r ANSWER1`
+
+(@) **Q2** What number and fraction (in %) of genes with low counts were removed? </br>
+**A2** `r ANSWER2`
+
+(@) **Q3** What number and fraction (in %) of genes were retained? </br>
+**A3** `r ANSWER3`
+
+(@) **Q4** What are the Pearson and Spearman correlation coefficients between the log2-fold
+changes in NLS and NES experiments? </br>
+**A4** `r ANSWER4`
+
+(@) **Q5** Based on the heatmap, which sample group is the most distanced from the rest of the treatments? (10 words maximum) </br>
+**A5** `r ANSWER5` Length: `r len.ANSWER5`
+
+(@) **Q6** The values in `data_sc` are (TPM (transcripts per million)/scaled/centered) values? explain (maximum 30 words)  </br>
+**A6** `r ANSWER6` Length: `r len.ANSWER6`
+
+(@) **Q7** How would you know histogram represents the adjusted p values? (30 words maxium) </br>
+**A7** `r ANSWER7` Length: `r len.ANSWER7`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               

@@ -190,7 +190,7 @@ subset the ***counts***, ***abundance*** and ***length*** data in `rse` (`rse` i
 #--------------------------Starting with reading the tbl--------------------------------
 ftab <- read.table("rsem_files_ex.txt", header = TRUE, stringsAsFactors = FALSE)
 #--------------------------adding the headers to the table--------------------------------
-colnames(ftab) <- c("files", "condition", "replicate")
+colnames(ftab) <- c("files", "condition", "replicate", "replicate_number")
 #--------------------------load the RSEM files------------------------------------------
 rse <- tximport(files = ftab$files, type = "rsem", tx2gene = NULL)
 #--------------------------Backup the original data--------------------------------------
@@ -252,12 +252,13 @@ Use the function `counts()` to access count values from a DESeq results object.
 **Save** your answer in a variable `ANSWER3`
 ```{r echo=TRUE, 1b-DESEQ2, include=FALSE}
 #----- starting with the first part of the task-----
-cdat <- data.frame(condition = ftab$condition, replicate = ftab$replicate)
+ftab$replicate <- paste0(ftab$replicate, "_" , ftab$replicate_number)
+cdat <- data.frame(condition = factor(ftab$condition), replicate = factor(ftab$replicate))
 #### Make a DESeqDataSet using the design data frame
-ds.txi <- DESeqDataSetFromTximport(rse, cdat, ~condition+replicate)
-
+ds.txi <- DESeqDataSetFromTximport(txi = rse,
+                                   colData = cdat,
+                                   design = ~ condition + replicate)
 ANSWER1 = nrow(ds.txi)
-
 # ----- starting with the second part of the task-----
 # Run the DESeq analysis (i.e. differential expression analysis)
 ds <- DESeq(ds.txi, betaPrior=TRUE)
@@ -300,27 +301,26 @@ respective background (referred to as 'Input').<br>
 **Print the summary of each result objects to the console.**
 
 ```{r 1c-enrichment, echo=TRUE}
+
 # set the threshold for alpha to 0.05
 alpha = 0.05
 
-# Extract condition lavels
-dds$condition %>% levels()
+# renames the conditions to include the replicate number
+dds$condition <- paste0(dds$condition, "_", dds$replicate)
+
 resultsNames(dds)
-# print dds object
-summary(dds)
 
-dds$replicate %>% length()
-
-dds$condition %>% length()
-
-#add the replicate to the condition
-dds$condition <- factor(paste0(dds$condition, "_", dds$replicate))
+results(dds,contrast = c("condition","coconditionKDEL.HRP","conditionKDEL.HRP"), alpha = alpha)
 
 
-a <- results(dds, 
-                    contrast = c("condition", "Mito_RIP", "Mito_Input"),
-                    alpha = 0.05)
-summary(a)
+dds <- makeExampleDESeqDataSet(n=100,m=12)
+
+dds <- DESeq(dds)
+dds$replicate <- factor(rep(rep(c("I","II"),each=3),2))
+
+design(dds) <- ~ replicate + condition + genotype:condition
+
+
 
 ```
 

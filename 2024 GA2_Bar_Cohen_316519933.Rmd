@@ -304,23 +304,23 @@ respective background (referred to as 'Input').<br>
 alpha = 0.05
 
 # Extract condition lavels
-condition_lavels <- dds$condition %>% levels()
+dds$condition %>% levels()
+resultsNames(dds)
+# print dds object
+summary(dds)
 
-#create a empty list to store the results
-results_list <- list()
+dds$replicate %>% length()
 
-#function to extract the results
-extract_results <- function(condition, dds, alpha){
-  #extract the results
-  res <- results(dds, contrast = c(condition, "RIP", "Input"),alpha = alpha)
-  #print the summary of the results
-  print(summary(results_list[[condition]]))
-  print("it works thanks god")
-  return(res)
-}
-# apply the function to each condition
-res_KDEL-HRP <-  extract_results("KDEL-HRP", dds, alpha)
-results(dds, contrast = c("condition", "KDEL-HRP", "RIP", "Input"), alpha = alpha)
+dds$condition %>% length()
+
+#add the replicate to the condition
+dds$condition <- factor(paste0(dds$condition, "_", dds$replicate))
+
+
+a <- results(dds, 
+                    contrast = c("condition", "Mito_RIP", "Mito_Input"),
+                    alpha = 0.05)
+summary(a)
 
 ```
 

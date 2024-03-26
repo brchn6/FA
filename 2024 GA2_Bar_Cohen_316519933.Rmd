@@ -352,13 +352,13 @@ number of genes significantly regulated.
 
 ```{r echo=TRUE}
 #drop NA values
-res_mito <- res_mito[!is.na(res_mito$padj),]
-res_er <- res_er[!is.na(res_er$padj),]
-res_nls <- res_nls[!is.na(res_nls$padj),]
-res_nes <- res_nes[!is.na(res_nes$padj),]
+res_mito_tm <- res_mito[!is.na(res_mito$padj),]
+res_er_tm <- res_er[!is.na(res_er$padj),]
+res_nls_tm <- res_nls[!is.na(res_nls$padj),]
+res_nes_tm <- res_nes[!is.na(res_nes$padj),]
 
-#strong DE genes
-strong_mito <- sum(res_mito$padj < 0.05 & abs(res_mito$log2FoldChange) > 1)
+#sum and store the number of strong DE genes if not NA
+strong_mito <- sum(res_mito_tm$padj < 0.05 & abs(res_mito_tm$log2FoldChange) > 1)
 strong_er <- sum(res_er$padj < 0.05 & abs(res_er$log2FoldChange) > 1)
 strong_nls <- sum(res_nls$padj < 0.05 & abs(res_nls$log2FoldChange) > 1)
 strong_nes <- sum(res_nes$padj < 0.05 & abs(res_nes$log2FoldChange) > 1)
@@ -401,7 +401,16 @@ function, ***cor = TRUE***.
 **Save** your answer in a variable `ANSWER4` 
 
 ```{r heatscatter, echo=TRUE}
-ANSWER4 = ""
+#---HeatScatter plot
+heatscatter(res_nls$log2FoldChange, res_nes$log2FoldChange, cor = TRUE)
+#---Calculate the Pearson and Spearman correlation coefficients
+cor.pearson <- cor(res_nls$log2FoldChange, res_nes$log2FoldChange, method = "pearson")
+cor.spearman <- cor(res_nls$log2FoldChange, res_nes$log2FoldChange, method = "spearman")
+
+#--- make the answer
+ANSWER4 = paste("Pearson:", round(cor.pearson, 4), "Spearman:", round(cor.spearman, 4))
+#---Done---
+# 😊
 ```
 
 \newpage

@@ -255,10 +255,13 @@ Use the function `counts()` to access count values from a DESeq results object.
 ```{r echo=TRUE, 1b-DESEQ2, include=FALSE}
 #----- starting with the first part of the task-----
 #-----adding the replicate number to the replicate name in the ftab table-----
-ftab$replicate <- paste0(ftab$replicate, "_" , ftab$replicate_number)
+# ftab$replicate <- paste0(ftab$replicate, ftab$replicate_number)
 
 #-----creating a design data frame with the condition and replicate columns as factors-----
 cdat <- data.frame(condition = factor(ftab$condition), replicate = factor(ftab$replicate))
+
+#-adding the replicate number to the condition name in the cdat table
+cdat$condition <- paste0(cdat$condition, "_" ,cdat$replicate)
 
 #### Make a DESeqDataSet using the design data frame
 ds.txi <- DESeqDataSetFromTximport(txi = rse,
@@ -307,27 +310,20 @@ respective background (referred to as 'Input').<br>
 **Print the summary of each result objects to the console.**
 
 ```{r 1c-enrichment, echo=TRUE}
+#---Extract the results of differential RNA expression for each compartment
+res <- results(dds, contrast = c("condition", "RIP", "Input"), name = "RIP_vs_Input", alpha = 0.05)
 
-# set the threshold for alpha to 0.05
-alpha = 0.05
+#---Extract the results of differential RNA expression for each condition
+res_mito <- res[dds$condition == "Mito-APEX2", ]
+res_er <- res[dds$condition == "KDEL-HRP", ]
+res_nls <- res[dds$condition == "NLS-APEX2", ]
+res_nes <- res[dds$condition == "NES-APEX2", ]
 
-# renames the conditions to include the replicate number
-dds$condition <- paste0(dds$condition, "_", dds$replicate)
-
-resultsNames(dds)
-
-results(dds,contrast = c("condition","coconditionKDEL.HRP","conditionKDEL.HRP"), alpha = alpha)
-
-
-dds <- makeExampleDESeqDataSet(n=100,m=12)
-
-dds <- DESeq(dds)
-dds$replicate <- factor(rep(rep(c("I","II"),each=3),2))
-
-design(dds) <- ~ replicate + condition + genotype:condition
-
-
-
+#---Print the summary of each result objects to the console
+print(summary(res_mito))
+print(summary(res_er))
+print(summary(res_nls))
+print(summary(res_nes))
 ```
 
 ### Barplot: Strong DE genes

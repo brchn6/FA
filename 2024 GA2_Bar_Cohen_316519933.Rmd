@@ -499,7 +499,6 @@ pheatmap(m.dsample,
          display_numbers = T) 
 
 
-
 ANSWER5 = "the most distanced treatments is KDEL-HRP"
 len.ANSWER5 = print(length(unlist(strsplit(ANSWER5,split = " ")))) # DON'T delete!
 ```
@@ -517,8 +516,6 @@ len.ANSWER5 = print(length(unlist(strsplit(ANSWER5,split = " ")))) # DON'T delet
 
 ```{r read_data, echo=TRUE}
 data_sc <- readRDS("caron_mat.RDS") 
-# as tibble
-data_sc <- as_tibble(data_sc)
 metadata_sc <- readRDS("caron_metadata.RDS")
 ```
 
@@ -531,23 +528,43 @@ Explore the data in the following chunk:</br>
 ***Explain*** you answer (30 words **maximum**) and **save**  it in a variable `ANSWER6`. 
 
 ```{r q1, echo=TRUE}
+#reshape the data to long format
+library(tidyr)
+library(reshape)
+dat.long <- data_sc %>% as.data.frame() %>% rownames_to_column(var = "genes") %>% 
+  gather(key = "samples", value = "TPM", -genes)
+#add to dat.long the metadata base on the sample column match to cell_name in the metadata_sc
+dat.long <- left_join(dat.long, metadata_sc, by = c("samples" = "cell_name"))
+
+#drop all na values
+dat.long <- dat.long[!is.na(dat.long$cell_type),]
+
 #---EDA
-#plot sum of each column
-plot(colSums(data_sc), xlab = "Genes", ylab = "Sum of expression", main = "Sum of expression per gene")
+#store the most 25 expressed genes in a variable
+top25 <- dat.long %>% group_by(genes) %>% summarise(mean_TPM = mean(TPM)) %>% top_n(25, mean_TPM) %>% pull(genes)
+
+   
+# barplot of the most 25 expressed genes
+dfToPlot<- dat.long %>% filter(genes %in% top25) 
+ggplot(dfToPlot, aes(x = genes, y = TPM ,fill = cell_type)) +
+geom_bar(stat = "identity") +
+coord_flip() 
+
+#boxplot of the most 5 expressed genes
+#df of dat.long with od the most 5 expressed genes
+dfToPlot<- dat.long %>% filter(genes %in% top25[1:5])
+ggplot(dfToPlot, aes(x = genes, y = TPM ,fill = cell_type)) +
+geom_boxplot() +
+coord_flip()
+
+#density plot of the most 50 expressed genes
+top50 <- dat.long %>% group_by(genes) %>% summarise(mean_TPM = mean(TPM)) %>% top_n(50, mean_TPM) %>% pull(genes)
+dfToPlot<- dat.long %>% filter(genes %in% top50[1:50])
+ggplot(dfToPlot, aes(x = TPM, fill = cell_type)) +
+geom_density(alpha = 0.3) 
 
 
-
-ggplot(metadata_sc, aes(x = complexity, y = cell_cycle_phase)) +
-  geom_point() +
-  labs(title = "Scatter plot of Complexity vs Cell Cycle Phase",
-       x = "Complexity",
-       y = "Cell Cycle Phase")
-
-
-
-
-
-ANSWER6 = ""
+ANSWER6 = "I chose to plot the most expressed genes in thedatato understand the distribution of the data. The plots show the distribution of the data in the most expressed genes."
 len.ANSWER6 = print(length(unlist(strsplit(ANSWER6,split = " ")))) # DON'T delete!
 ```
 

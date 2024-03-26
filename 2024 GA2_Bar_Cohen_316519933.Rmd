@@ -468,14 +468,38 @@ Set: <br>
 * display_numbers = T
 
 
-This information is accessible in the`rld` object or from the initial `cdat` 
+This information is accessible in the `rld` object or from the initial `cdat` 
 design data frame from the previous step. 
 
 *Q5- Based on the heatmap, which sample group is the most distanced from the rest of the treatments?*  
 **Save** your answer in a variable `ANSWER5` (10 words maximum)
 
 ```{r 1d-sim.mat-hclust, echo=TRUE, cache=FALSE}
-ANSWER5 = ""
+#---log-space counts
+rld <- rlog(dds)
+#---Summarized Experiment
+SE <- assay(rld)
+#---Euclidean distance between genes
+dsample <- dist(t(SE))
+m.dsample <- as.matrix(dsample)
+
+#renames the number of rows in the distance matrix to the condition and replicate
+rownames(m.dsample) <- paste0(cdat$condition, cdat$replicate)
+#----heatmap
+pheatmap(m.dsample, 
+         rownames = paste0(cdat$condition, cdat$replicate),
+         clustering_distance_rows = dsample,
+         clustering_distance_cols = dsample,
+         cellwidth = 10,
+         show_colnames = F,
+         show_rownames = T,
+         fontsize = 5,
+         main = "Sample similarity as Euclidean distance", 
+         display_numbers = T) 
+
+
+
+ANSWER5 = "the most distanced treatments is KDEL-HRP"
 len.ANSWER5 = print(length(unlist(strsplit(ANSWER5,split = " ")))) # DON'T delete!
 ```
 

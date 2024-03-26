@@ -502,10 +502,7 @@ pheatmap(m.dsample,
 ANSWER5 = "the most distanced treatments is KDEL-HRP"
 len.ANSWER5 = print(length(unlist(strsplit(ANSWER5,split = " ")))) # DON'T delete!
 ```
-
 ---
-
-
 
 # Task3: Data quailty and multiple testing  
 
@@ -518,7 +515,10 @@ len.ANSWER5 = print(length(unlist(strsplit(ANSWER5,split = " ")))) # DON'T delet
 > Important: Single cell data include information about the expression of genes within multiple cells. **Take** a moment and understand what the rows and columns of `data_sc` represent  
 
 ```{r read_data, echo=TRUE}
-
+data_sc <- readRDS("caron_mat.RDS") 
+# as tibble
+data_sc <- as_tibble(data_sc)
+metadata_sc <- readRDS("caron_metadata.RDS")
 ```
 
 ***Q6***: The values in `data_sc` are TPM (transcripts per million)/scaled (Centred Values are: Xi-mean(x))/centered (z-score values i.e. (Xi-mean(x))/sd(x) just like we have learned in the lesson about PCA)?<br> 
@@ -530,6 +530,23 @@ Explore the data in the following chunk:</br>
 ***Explain*** you answer (30 words **maximum**) and **save**  it in a variable `ANSWER6`. 
 
 ```{r q1, echo=TRUE}
+#---EDA
+
+
+
+
+
+
+ggplot(metadata_sc, aes(x = complexity, y = cell_cycle_phase)) +
+  geom_point() +
+  labs(title = "Scatter plot of Complexity vs Cell Cycle Phase",
+       x = "Complexity",
+       y = "Cell Cycle Phase")
+
+
+
+
+
 ANSWER6 = ""
 len.ANSWER6 = print(length(unlist(strsplit(ANSWER6,split = " ")))) # DON'T delete!
 ```

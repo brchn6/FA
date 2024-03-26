@@ -125,9 +125,11 @@ if (!require("BiocManager", quietly = TRUE))
 
 BiocManager::install("tximport")
 library(tximport)
-
 #--done--
 ```
+
+
+
 
 # TASK1: DESeq analysis of APEX-tagged genes
 
@@ -252,8 +254,12 @@ Use the function `counts()` to access count values from a DESeq results object.
 **Save** your answer in a variable `ANSWER3`
 ```{r echo=TRUE, 1b-DESEQ2, include=FALSE}
 #----- starting with the first part of the task-----
+#-----adding the replicate number to the replicate name in the ftab table-----
 ftab$replicate <- paste0(ftab$replicate, "_" , ftab$replicate_number)
+
+#-----creating a design data frame with the condition and replicate columns as factors-----
 cdat <- data.frame(condition = factor(ftab$condition), replicate = factor(ftab$replicate))
+
 #### Make a DESeqDataSet using the design data frame
 ds.txi <- DESeqDataSetFromTximport(txi = rse,
                                    colData = cdat,

@@ -566,6 +566,8 @@ geom_density(alpha = 0.3)
 
 ANSWER6 = "I chose to plot the most expressed genes in thedatato understand the distribution of the data. The plots show the distribution of the data in the most expressed genes."
 len.ANSWER6 = print(length(unlist(strsplit(ANSWER6,split = " ")))) # DON'T delete!
+#---Done---
+# 😊
 ```
 
 ## Log transform the data<br>
@@ -575,7 +577,8 @@ len.ANSWER6 = print(length(unlist(strsplit(ANSWER6,split = " ")))) # DON'T delet
 3) **Save** the log transform data and centered data in a variable `cent_mat`
 
 ```{r log_center, echo=TRUE}
-
+log_data <- log2((data_sc/10) + 1)
+cent_mat <- scale(log_data, center = TRUE, scale = FALSE)
 ```
 
 ## QC The data<br>

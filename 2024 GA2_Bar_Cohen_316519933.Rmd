@@ -118,12 +118,13 @@ library(dplyr)
 
 #---Install packages from Bioconductor---
 library(SummarizedExperiment)
-library(LSD)
+# if LSD is not installed, install it
 library(DESeq2)
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-
-BiocManager::install("tximport")
+    BiocManager::install("LSD")
+    BiocManager::install("tximport")
+library(LSD)
 library(tximport)
 #--done--
 ```
@@ -531,9 +532,8 @@ Explore the data in the following chunk:</br>
 
 ```{r q1, echo=TRUE}
 #---EDA
-
-
-
+#plot sum of each column
+plot(colSums(data_sc), xlab = "Genes", ylab = "Sum of expression", main = "Sum of expression per gene")
 
 
 

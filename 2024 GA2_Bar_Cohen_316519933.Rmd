@@ -682,10 +682,10 @@ For each gene, perform a t.test between the sampled malignant cells to the non_m
 
 ```{r t_test, echo=TRUE}
 # preform a t.test for each gene between cent_final_malig and cent_final_non_malig
-t_test_res <- apply(cent_final, 1, function(x) t.test(x[sampled_malig], x[non_malignant])$p.value)
+p_values <- apply(cent_final, 1, function(x) t.test(x[sampled_malig], x[non_malignant])$p.value)
 
 #apply FDR correction to the p-values
-p_values <- p.adjust(t_test_res, method = "fdr")
+p_adjusted <- p.adjust(t_test_res, method = "fdr")
 
 #smal plot to see the results
 P <- ggplot(data = data.frame(p_values = p_values), aes(x = p_values)) +
@@ -697,7 +697,7 @@ P <- ggplot(data = data.frame(p_values = p_values), aes(x = p_values)) +
 df <- data.frame(p_values = t_test_res, p_adjusted = p_values)
 
 #cound the number of genes with p-values < 0.05
-sum(p_values < 0.05)
+sumofgenes <- sum(p_values < 0.05)
 
 #print P with the df
 print(P)
@@ -716,10 +716,11 @@ print(P)
 
 **Save** your explaination in `ANSWER7` (maxium 30 words)
 ```{r echo=TRUE}
-readRDS("pvalue_hist.rds")
+load("pvalue_hist.rds")
 pvalue.hist(a = p_values,b = p_adjusted)
 
-ANSWER7 = ""
+ANSWER7 = "the histogram with the adjusted p-values will have lower values compared to the the p-values , and 
+therfore the B histogram in the blue color represents the adjusted p-values."  
 len.ANSWER7 = print(length(unlist(strsplit(ANSWER7,split = " ")))) # DON'T delete!
 ```
 

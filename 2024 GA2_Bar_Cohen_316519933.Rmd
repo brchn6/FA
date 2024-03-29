@@ -604,11 +604,9 @@ comp_up <- comp_up > 500
 cent_filt <- cent_mat[, comp_up]
 metadata_sc_filt <- metadata_sc[comp_up, ]
 log_data_filt <- log_data[, comp_up]
-
 # print the amouut of cell subsetting and the amouunt of cell removed
 # print(paste("The number of cells with high complexity is:", sum(comp_up)))
 # print(paste("The number of cells with low complexity is:", sum(!comp_up)))
-
 ```
 ## Finding the highly expressed genes
 Using `log_data` (unfiltered by complexity) find the top 7000 genes with the highest **mean** expression.  
@@ -618,7 +616,7 @@ Using `log_data` (unfiltered by complexity) find the top 7000 genes with the hig
 ```{r filter_genes, echo=TRUE}
 #---Finding the highly expressed genes and logic vector of the top 7000 genes
 top_genes <- apply(log_data, 1, mean)
-top_genes <- order(top_genes, decreasing = TRUE)[1:7000]
+top_genes <- order(top_genes, decreasing = T)[1:7000]
 
 #making a subset of cent_filt with only the top 7000 most expressed genes
 cent_final <- cent_filt[top_genes, ]
@@ -634,7 +632,9 @@ If the cell type indicates it's malignant, put "Malignant" in the new column and
 
 ```{r Malig, echo=TRUE}
 malig_cells <- metadata_sc$cell_type == "Malignant"
-metadata_sc_filt$Malignant <- ifelse(malig_cells, "Malignant", "non-Malignant")
+metadata_sc_filt$Malignant <- ifelse(metadata_sc_filt$cell_type == "Malignant", "Malignant ", "non-Malignant")
+#drop na values in the metadata_sc_filt malig column
+metadata_sc_filt <- metadata_sc_filt[!is.na(metadata_sc_filt$Malignant),]
 ```
 
 ### Visualisation of cell classification  
@@ -661,9 +661,14 @@ ggplot(metadata_sc_filt, aes(x = Malignant)) +
 ```{r Sample, echo=TRUE}
 set.seed(2020) # Don't change!
 #---Create a sample data
-sampled_malig <- sample(metadata_sc_filt$Malignant[metadata_sc_filt$Malignant == "Malignant"], 536, replace = FALSE)
-non_malignant <- metadata_sc_filt$Malignant[metadata_sc_filt$Malignant == "non-Malignant"]
-non_malignant <- non_malignant[!is.na(non_malignant)]
+#get a list of 536 malignant cells names
+sampled_malig <- sample(metadata_sc_filt$cell_name[metadata_sc_filt$Malignant == "Malignant"], 536, replace = FALSE)
+non_malignant <- sample(metadata_sc_filt$cell_name[metadata_sc_filt$Malignant == "non-Malignant"], replace = FALSE)
+
+#split cent_final to 2 df based on the cell names %in% sampled_malig and non_malignant
+cent_final_malig <- cent_final[, sampled_malig]
+cent_final_non_malig <- cent_final[, non_malignant]
+
 ```
 
 ### Multiple t.test<br>
@@ -672,13 +677,34 @@ For each gene, perform a t.test between the sampled malignant cells to the non_m
 
 > NOTICE! you will perform multiple test, you will need to use the HB FDR correction. <br>
 
-1) Use the padjust function  to apply  FDR correction to the p-values from the multiple testing before.   
+1) Use the p.adjust function  to apply FDR correction to the p-values from the multiple testing before.   
 2) **Save** the p-values in a variable `p_values` and the adjusted p-values store in a vector named `p_adjusted` 
 
 ```{r t_test, echo=TRUE}
-#---Multiple t.test
-p_values <- apply(cent_final, 1, function(x) t.test(x[sampled_malig], x[non_malignant])$p.value)
-p_adjusted <- p.adjust(p_values, method = "BH")
+# preform a t.test for each gene between cent_final_malig and cent_final_non_malig
+t_test_res <- apply(cent_final, 1, function(x) t.test(x[sampled_malig], x[non_malignant])$p.value)
+
+#apply FDR correction to the p-values
+p_values <- p.adjust(t_test_res, method = "fdr")
+
+#smal plot to see the results
+P <- ggplot(data = data.frame(p_values = p_values), aes(x = p_values)) +
+      geom_histogram(binwidth = 0.01, fill = "steelblue",breaks = seq(0, 0.15, by = 0.025)) +
+      labs(title = "Histogram of p-values", x = "p-values", y = "Frequency")+
+      geom_vline(xintercept = 0.05, color = "red", linetype = "dashed")
+
+# Create a dataframe of the values falling into each bin
+df <- data.frame(p_values = t_test_res, p_adjusted = p_values)
+
+#cound the number of genes with p-values < 0.05
+sum(p_values < 0.05)
+
+#print P with the df
+print(P)
+# print(head(df))
+#---Done---
+# 😊
+
 ```
 
 

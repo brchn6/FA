@@ -410,8 +410,6 @@ cor.spearman <- cor(res_nls$log2FoldChange, res_nes$log2FoldChange, method = "sp
 
 #--- make the answer
 ANSWER4 = paste("Pearson:", round(cor.pearson, 4), "Spearman:", round(cor.spearman, 4))
-#---Done---
-# 😊
 ```
 
 \newpage
@@ -471,7 +469,6 @@ Set: <br>
 
 This information is accessible in the `rld` object or from the initial `cdat` 
 design data frame from the previous step. 
-
 *Q5- Based on the heatmap, which sample group is the most distanced from the rest of the treatments?*  
 **Save** your answer in a variable `ANSWER5` (10 words maximum)
 
@@ -501,7 +498,9 @@ pheatmap(m.dsample,
 
 ANSWER5 = "the most distanced treatments is KDEL-HRP"
 len.ANSWER5 = print(length(unlist(strsplit(ANSWER5,split = " ")))) # DON'T delete!
+
 ```
+
 ---
 
 # Task3: Data quailty and multiple testing  
@@ -558,11 +557,12 @@ ggplot(dfToPlot, aes(x = genes, y = TPM ,fill = cell_type)) +
 geom_boxplot() +
 coord_flip()
 
-#density plot of the most 50 expressed genes
+# density plot of the most 50 expressed genes
 top50 <- dat.long %>% group_by(genes) %>% summarise(mean_TPM = mean(TPM)) %>% top_n(50, mean_TPM) %>% pull(genes)
 dfToPlot<- dat.long %>% filter(genes %in% top50[1:50])
 ggplot(dfToPlot, aes(x = TPM, fill = cell_type)) +
-geom_density(alpha = 0.3) 
+geom_density(alpha = 0.3) + 
+xlim(0, 15000)
 
 
 ANSWER6 = "I chose to plot the most expressed genes in thedatato understand the distribution of the data. The plots show the distribution of the data in the most expressed genes."
@@ -633,7 +633,7 @@ If the cell type indicates it's malignant, put "Malignant" in the new column and
 
 ```{r Malig, echo=TRUE}
 malig_cells <- metadata_sc$cell_type == "Malignant"
-metadata_sc_filt$Malignant <- ifelse(metadata_sc_filt$cell_type == "Malignant", "Malignant ", "non-Malignant")
+metadata_sc_filt$Malignant <- ifelse(metadata_sc_filt$cell_type == "Malignant", "Malignant", "non-Malignant")
 #drop na values in the metadata_sc_filt malig column
 metadata_sc_filt <- metadata_sc_filt[!is.na(metadata_sc_filt$Malignant),]
 ```
@@ -686,7 +686,7 @@ For each gene, perform a t.test between the sampled malignant cells to the non_m
 p_values <- apply(cent_final, 1, function(x) t.test(x[sampled_malig], x[non_malignant])$p.value)
 
 #apply FDR correction to the p-values
-p_adjusted <- p.adjust(t_test_res, method = "fdr")
+p_adjusted <- p.adjust(p_values, method = "fdr")
 
 #smal plot to see the results
 P <- ggplot(data = data.frame(p_values = p_values), aes(x = p_values)) +
@@ -695,13 +695,13 @@ P <- ggplot(data = data.frame(p_values = p_values), aes(x = p_values)) +
       geom_vline(xintercept = 0.05, color = "red", linetype = "dashed")
 
 # Create a dataframe of the values falling into each bin
-df <- data.frame(p_values = t_test_res, p_adjusted = p_values)
+df <- data.frame(p_values = p_values, p_adjusted = p_values)
 
 #cound the number of genes with p-values < 0.05
 sumofgenes <- sum(p_values < 0.05)
 
 #print P with the df
-print(P)
+# print(P)
 # print(head(df))
 #---Done---
 # 😊

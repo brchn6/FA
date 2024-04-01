@@ -190,23 +190,22 @@ subset the ***counts***, ***abundance*** and ***length*** data in `rse` (`rse` i
 
 
 ```{r echo=TRUE, warning=FALSE, "1a-load-data", message=F}
-#--------------------------Starting with reading the tbl--------------------------------
-ftab <- read.table("rsem_files_ex.txt", header = TRUE, stringsAsFactors = FALSE)
+#--------------------------Starting with reading the tbl-------------------------------
+ftab <- read.table("rsem_files_ex.txt")
 #--------------------------adding the headers to the table--------------------------------
-colnames(ftab) <- c("files", "condition", "replicate", "replicate_number")
+#colnames(ftab) <- c("files", "condition", "replicate", "replicate_number")
 #--------------------------load the RSEM files------------------------------------------
-rse <- tximport(files = ftab$files, type = "rsem", tx2gene = NULL)
+rse <- tximport(ftab$V1, type="rsem")
+# rse <- tximport(files = ftab$files, type = "rsem")
 #--------------------------Backup the original data--------------------------------------
 rse.bak <- rse
 #--------------------------save the original data----------------------------------------
 save(rse, file = "rse.bak.RData")
 #---Done with the first part---
-
 #--------------------------Filter out transcripts that their minimum length is shorter than 300 bases--------------------------------
 #----creating a logical vector to indicate which rows in the 
 # rse$length is true for length >= 300
 valLength <- apply(rse$length, 1, min) >= 300
-
 #----subset the counts, abundance and length data in rse
 rse$counts <- rse$counts[valLength, ]
 rse$abundance <- rse$abundance[valLength, ]
@@ -259,32 +258,32 @@ Use the function `counts()` to access count values from a DESeq results object.
 # ftab$replicate <- paste0(ftab$replicate, ftab$replicate_number)
 
 #-----creating a design data frame with the condition and replicate columns as factors-----
-cdat <- data.frame(condition = factor(ftab$condition), replicate = factor(ftab$replicate))
-
-#add I for Input and R for RIP to new column in cdat
-cdat$conditionID <- ifelse(grepl("Input", cdat$replicate), "I", "R")
-
-#-adding the replicate number to the condition name in the cdat table
-cdat$condition <- factor(cdat$condition)
+cdat = data.frame(
+  condition = as.factor(paste0(ftab$V2, '-', ftab$V3)), 
+  replicate = as.factor(ftab$V4)
+  )
+#set the levels of the condition column
+replicate = factor(ftab$V3)
 
 #### Make a DESeqDataSet using the design data frame
-ds.txi <- DESeqDataSetFromTximport(txi = rse,
-                                   colData = cdat,
-                                   design = ~ condition + replicate)
+ds.txi = DESeqDataSetFromTximport(txi = rse ,colData = cdat, design = ~condition+replicate)
+saveRDS(ds.txi, file = "ds.txi.rds")
 
 ANSWER1 = nrow(ds.txi)
+
 # ----- starting with the second part of the task-----
 # Run the DESeq analysis (i.e. differential expression analysis)
 ds <- DESeq(ds.txi, betaPrior=TRUE)
 
 # Filter results for low counts genes
-dds <- ds[ rowSums(counts(ds)) > 10, ]
+genes_to_keep<-apply(counts(ds),1,function(x) sum(x)>10)
+
+dds<-ds[genes_to_keep,]
 
 # Calculate the fraction of genes removed
 ANSWER2 = round((1 - nrow(dds)/nrow(ds.txi)) * 100, 2)
 
 ANSWER3 = round((nrow(dds)/nrow(ds.txi)) * 100, 2)
-
 # 😊
 #-----Done with the second part of the task-----
 # ---Done-----
@@ -315,20 +314,30 @@ respective background (referred to as 'Input').<br>
 **Print the summary of each result objects to the console.**
 
 ```{r 1c-enrichment, echo=TRUE}
-#---Extract the results of differential RNA expression for each compartment
-res <- results(dds, contrast = c("replicate", "Input", "RIP"), alpha = 0.05)
+res_Mito <- results(dds, 
+                    contrast = c("condition", "Mito-APEX2 RIP", "Mito-APEX2 Input"),
+                    alpha = 0.05)
 
-#---Extract the results of differential RNA expression for each condition
-res_mito <- res[dds$condition == "Mito-APEX2", ]
-res_er <- res[dds$condition == "KDEL-HRP", ]
-res_nls <- res[dds$condition == "NLS-APEX2", ]
-res_nes <- res[dds$condition == "NES-APEX2", ]
+res_ER <- results(dds, 
+                  contrast = c("condition", "KDEL-HRP RIP", "KDEL-HRP Input"),
+                  alpha = 0.05)
+
+res_NLS <- results(dds, 
+                    contrast = c("condition", "NLS-APEX2 RIP", "NLS-APEX2 Input"),
+                    alpha = 0.05)
+
+res_NES <- results(dds, 
+                    contrast = c("condition", "NES-APEX2 RIP", "NES-APEX2 Input"),
+                    alpha = 0.05)
+
+all_res=c(res_ER,res_Mito,res_NES,res_NLS)
+names(all_res)=c('ER','Mito','NES','NLS')
 
 #---Print the summary of each result objects to the console
-print(summary(res_mito))
-print(summary(res_er))
-print(summary(res_nls))
-print(summary(res_nes))
+print(summary(res_Mito))
+print(summary(res_ER))
+print(summary(res_NLS))
+print(summary(res_NES))
 #---Done---
 # 😊
 ```
@@ -352,17 +361,11 @@ number of genes significantly regulated.
 
 
 ```{r echo=TRUE}
-#drop NA values
-res_mito_tm <- res_mito[!is.na(res_mito$padj),]
-res_er_tm <- res_er[!is.na(res_er$padj),]
-res_nls_tm <- res_nls[!is.na(res_nls$padj),]
-res_nes_tm <- res_nes[!is.na(res_nes$padj),]
-
 #sum and store the number of strong DE genes if not NA
-strong_mito <- sum(res_mito_tm$padj < 0.05 & abs(res_mito_tm$log2FoldChange) > 1)
-strong_er <- sum(res_er$padj < 0.05 & abs(res_er$log2FoldChange) > 1)
-strong_nls <- sum(res_nls$padj < 0.05 & abs(res_nls$log2FoldChange) > 1)
-strong_nes <- sum(res_nes$padj < 0.05 & abs(res_nes$log2FoldChange) > 1)
+strong_mito <- sum(res_Mito$padj < 0.05 & abs(res_Mito$log2FoldChange) > 1, na.rm = TRUE)
+strong_er <- sum(res_ER$padj < 0.05 & abs(res_ER$log2FoldChange) > 1, na.rm = TRUE)
+strong_nls <- sum(res_NES$padj < 0.05 & abs(res_NLS$log2FoldChange) > 1, na.rm = TRUE)
+strong_nes <- sum(res_NLS$padj < 0.05 & abs(res_NES$log2FoldChange) > 1, na.rm = TRUE)
 
 #df for the barplot
 df <- data.frame(Condition = c("Mito", "ER", "NLS", "NES"),
@@ -372,7 +375,7 @@ df <- data.frame(Condition = c("Mito", "ER", "NLS", "NES"),
 ggplot(df, aes(x = Condition, y = Number)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   geom_text(aes(label = Number), vjust = -0.3, size = 3.5) +
-  labs(title = "Strong DE genes", x = "Condition", y = "Number of genes")
+  labs(title = paste("Mito:", strong_mito, "ER:", strong_er, "NLS:", strong_nls, "NES:", strong_nes), x = "Condition", y = "Number of strong DE genes")
 
 #---Done---
 # 😊

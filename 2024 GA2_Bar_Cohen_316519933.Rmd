@@ -362,21 +362,20 @@ number of genes significantly regulated.
 
 ```{r echo=TRUE}
 #sum and store the number of strong DE genes if not NA
-strong_mito <- sum(res_Mito$padj < 0.05 & abs(res_Mito$log2FoldChange) > 1, na.rm = TRUE)
-strong_er <- sum(res_ER$padj < 0.05 & abs(res_ER$log2FoldChange) > 1, na.rm = TRUE)
-strong_nls <- sum(res_NES$padj < 0.05 & abs(res_NLS$log2FoldChange) > 1, na.rm = TRUE)
-strong_nes <- sum(res_NLS$padj < 0.05 & abs(res_NES$log2FoldChange) > 1, na.rm = TRUE)
+strong_mito <- res_Mito$padj < 0.05 & abs(res_Mito$log2FoldChange) > 1
+strong_er <- res_ER$padj < 0.05 & abs(res_ER$log2FoldChange) > 1
+strong_nls <- res_NLS$padj < 0.05 & abs(res_NLS$log2FoldChange) > 1
+strong_nes <- res_NES$padj < 0.05 & abs(res_NES$log2FoldChange) > 1
 
 #df for the barplot
-df <- data.frame(Condition = c("Mito", "ER", "NLS", "NES"),
-                 Number = c(strong_mito, strong_er, strong_nls, strong_nes))
+significant_genes <- c(sum(strong_mito, na.rm = T), sum(strong_er, na.rm = T),
+    sum(strong_nls, na.rm = T), sum(strong_nes, na.rm = T))
+names(significant_genes) <- c("Mito", "ER", "NLS", "NES")
 
-#barplot
-ggplot(df, aes(x = Condition, y = Number)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  geom_text(aes(label = Number), vjust = -0.3, size = 3.5) +
-  labs(title = paste("Mito:", strong_mito, "ER:", strong_er, "NLS:", strong_nls, "NES:", strong_nes), x = "Condition", y = "Number of strong DE genes")
-
+# plotting:
+barplot(significant_genes, main = paste0("Mito:", significant_genes[1], "   ER:",
+    significant_genes[2], "   NLS:", significant_genes[3], "   NES:", significant_genes[4]),
+    xlab = "Compartment", ylab = "Number of Significantly Regulated Genes")
 #---Done---
 # 😊
 ```
